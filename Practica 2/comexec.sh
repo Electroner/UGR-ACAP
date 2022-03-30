@@ -3,7 +3,7 @@
 clear
 
 #compile the file
-mpicc $1.c -o $1
+mpicc $1.c -o $1 -lm
 
 #check if the file exists
 if [ -f $1 ]; then
