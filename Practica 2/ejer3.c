@@ -58,7 +58,8 @@ int main(int argc, char *argv[])
                 char linea[256];
                 printf("Ingrese una linea de texto:");
                 fflush(stdout);
-                scanf("%s", linea);
+                //get the line
+                fgets(linea, 256, stdin);
 
                 // Enviar la linea de texto al proceso 1
                 MPI_Send(linea, 256, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
