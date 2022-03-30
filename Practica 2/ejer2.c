@@ -132,6 +132,8 @@ int main(int argc, char *argv[])
             }
         }
 
+        printf("Minimo local, Proceso 1: %f\n", minimo);
+
         // Recibe los minimos de los procesos
         double *minimos = malloc(sizeof(double) * size);
         for(int i = 0; i < size; i++){
