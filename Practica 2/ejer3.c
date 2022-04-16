@@ -28,6 +28,7 @@ int main(int argc, char *argv[])
     MPI_Init(NULL, NULL);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
+    int opcion;
 
     if (size != 4)
     {
@@ -38,7 +39,6 @@ int main(int argc, char *argv[])
     switch (rank)
     {
     case 0:
-        int opcion;
         while (true)
         {
             // Preguntar para ingresar la opcion
