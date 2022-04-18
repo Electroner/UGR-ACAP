@@ -136,6 +136,9 @@ int main(int argc, char *argv[])
 
 		// Mostrar la suma total
 		printf("La suma total es: %f\n", suma_total+suma_local);
+
+		// Liberar memoria
+		liberarMatriz(matriz);
 	}
 	else
 	{
@@ -167,6 +170,7 @@ int main(int argc, char *argv[])
 
 		// Mandar la suma local
 		MPI_Send(&suma, 1, MPI_FLOAT, 0, 0, MPI_COMM_WORLD);
+		free(vector);
 	}
 
 	MPI_Finalize();
