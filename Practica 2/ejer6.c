@@ -142,6 +142,8 @@ int main(int argc, char *argv[])
         end_time = MPI_Wtime();
 
         #ifdef TIMES
+        // Mostrar el tamaño
+        printf("%d\t", tam);
         // Imprimir el tiempo
         printf("%f\t", end_time - start_time);
         fflush(stdout);
