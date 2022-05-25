@@ -6,6 +6,8 @@
 #include <random>
 
 #define ErrorPrecision 0.00001
+#define Blocks 1
+#define Threads 100
 
 void SumarMatricesCPU(float *A, float *B, float *C, unsigned int N1, unsigned int M1, unsigned int N2, unsigned int M2)
 {
@@ -172,8 +174,8 @@ int main(int argc, char *argv[])
     //Calculamos el tiempo de ejecución
     cudaEventRecord(Begining);
     //#################################################### GPU ####################################################//
-    SumarMatricesGPU<<<64, 64>>>(A_d, B_d, C_d, N1, M1, N2, M2);
-    //MultiplicarMatricesGPU<<<64, 64>>>(A_d, B_d, C_d, N1, M1, N2, M2);
+    SumarMatricesGPU<<<Blocks, Threads>>>(A_d, B_d, C_d, N1, M1, N2, M2);
+    //MultiplicarMatricesGPU<<<Blocks, Threads>>>(A_d, B_d, C_d, N1, M1, N2, M2);
     cudaEventRecord(Ending);
     cudaDeviceSynchronize();
 
@@ -201,9 +203,9 @@ int main(int argc, char *argv[])
     }
 
     //Mostramos Result
-    printf("\nResultado:\n");
     if (N1 < 7 && M1 < 7)
     {
+        printf("\nResultado:\n");
         for (int i = 0; i < N1; i++)
         {
             for (int j = 0; j < M2; j++)
@@ -217,6 +219,7 @@ int main(int argc, char *argv[])
     //Imprimimos los resultados
     printf("\nTIEMPO DE EJECUCION: %f\n", time);
 
+    bool exito = true;
     //Comparamos los resultados
     for (int i = 0; i < N1 * M2; i++)
     {
@@ -224,7 +227,10 @@ int main(int argc, char *argv[])
         {
             printf("\nError en la posición %d\n", i);
             printf("%.2f\t%.2f\n", C[i], Result[i]);
-            break;
+            exito = false;
         }
+    }
+    if(exito){
+        printf("\nTodos los resultados coinciden\n");
     }
 }

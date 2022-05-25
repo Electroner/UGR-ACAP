@@ -4,7 +4,7 @@ PASS='tnapzscrgg'
 FILE='output.txt'
 SOURCE='pr4-3.cu'
 PROGRAM='ejer3'
-PARAMS='5 5 5 5'
+PARAMS='100 100 100 100'
 
 if [ -f $FILE ]; then
     rm $FILE
