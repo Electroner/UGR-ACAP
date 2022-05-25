@@ -2,26 +2,44 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
-#include <sys/time.h>
+#include <chrono>
+#include <random>
 
-__global__ void SumarMatrices(float *A, float *B, float *C, unsigned int N1, unsigned int M1, unsigned int N2, unsigned int M2)
+#define ErrorPrecision 0.000001
+
+void SumarMatricesCPU(float *A, float *B, float *C, unsigned int N1, unsigned int M1, unsigned int N2, unsigned int M2)
 {
-    for(unsigned int i = blockIdx.x * blockDim.x + threadIdx.x; i < N1; i += blockDim.x * gridDim.x)
+    for (unsigned int i = 0; i < N1; i++)
     {
-        for(unsigned int j = blockIdx.y * blockDim.y + threadIdx.y; j < M1; j += blockDim.y * gridDim.y)
+        for (unsigned int j = 0; j < M1; j++)
         {
-            C[i * M2 + j] = 0;
-            for(unsigned int k = 0; k < N2; k++)
-            {
-                C[i * M2 + j] += A[i * N2 + k] * B[k * M2 + j];
-            }
+            C[i * M1 + j] = A[i * M1 + j] + B[i * M1 + j];
         }
     }
 }
 
-float drand(float low, float high)
+__global__ void SumarMatricesGPU(float *A, float *B, float *C, unsigned int N1, unsigned int M1, unsigned int N2, unsigned int M2)
 {
-    return ((float)rand() * (high - low)) / (float)RAND_MAX + low;
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int j = blockIdx.y * blockDim.y + threadIdx.y;
+
+    while(i < N1)
+    {
+        while(j < M1)
+        {
+            C[i * M1 + j] = A[i * M1 + j] + B[i * M1 + j];
+            j += gridDim.y;
+        }
+        i += gridDim.x;
+    }
+}
+
+float TrueRand(float min, float max) {
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine generator (seed);
+    std::uniform_real_distribution<double> distribution (min,max);
+
+    return distribution(generator);
 }
 
 int main(int argc, char *argv[])
@@ -58,15 +76,21 @@ int main(int argc, char *argv[])
     float *B = (float *)malloc(N2 * M2 * sizeof(float));
     float *C = (float *)malloc(N1 * M2 * sizeof(float));
 
+    float *A_d = (float *)malloc(N1 * M1 * sizeof(float));
+    float *B_d = (float *)malloc(N2 * M2 * sizeof(float));
+    float *C_d = (float *)malloc(N1 * M2 * sizeof(float));
+
+    float *Result = (float *)malloc(N1 * M2 * sizeof(float));
+
     for (int i = 0; i < N1 * M1; i++)
     {
-        A[i] = drand(0,1000);
+        A[i] = TrueRand(0,1000);
 
     }
 
     for (int i = 0; i < N2 * M2; i++)
     {
-        B[i] = drand(0, 1000);
+        B[i] = TrueRand(0, 1000);
     }
 
     //Si el tamaño es menor que 7, imprimimos la matriz
@@ -92,27 +116,32 @@ int main(int argc, char *argv[])
         }
     }
 
+    //Sumamos las matrices en CPU
+    SumarMatricesCPU(A, B, C, N1, M1, N2, M2);
+
     //Calculamos el tiempo de ejecución con cuda creado un evento
     cudaEvent_t Begining, Ending;
     cudaEventCreate(&Begining);
     cudaEventCreate(&Ending);
 
     //Reservamos memoria en cuda
-    cudaMalloc((void **)&A, N1 * M1 * sizeof(float));
-    cudaMalloc((void **)&B, N2 * M2 * sizeof(float));
-    cudaMalloc((void **)&C, N1 * M2 * sizeof(float));
+    cudaMalloc((void **)&A_d, N1 * M1 * sizeof(float));
+    cudaMalloc((void **)&B_d, N2 * M2 * sizeof(float));
+    cudaMalloc((void **)&C_d, N1 * M2 * sizeof(float));
 
     //Copiamos los datos a la GPU
-    cudaMemcpy(A, A, N1 * M1 * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(B, B, N2 * M2 * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(A_d, A, N1 * M1 * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(B_d, B, N2 * M2 * sizeof(float), cudaMemcpyHostToDevice);
 
     //Calculamos el tiempo de ejecución
     cudaEventRecord(Begining);
-    SumarMatrices<<<1, 1>>>(A, B, C, N1, M1, N2, M2);
+    SumarMatricesGPU<<<64, 64>>>(A_d, B_d, C_d, N1, M1, N2, M2);
     cudaEventRecord(Ending);
+    cudaDeviceSynchronize();
 
     //Copiamos los datos de la GPU a la CPU
-    cudaMemcpy(C, C, N1 * M2 * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(Result, C_d, N1 * M2 * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaDeviceSynchronize();
 
     //Calculamos el tiempo de ejecución
     cudaEventSynchronize(Ending);
@@ -125,7 +154,7 @@ int main(int argc, char *argv[])
     //Si el tamaño es menor que 7, imprimimos la matriz C
     if (N1 < 7 && M1 < 7)
     {
-        printf("Matriz resultante:\n");
+        printf("\nMatriz resultante CPU:\n");
         for (int i = 0; i < N1; i++)
         {
             for (int j = 0; j < M2; j++)
@@ -133,6 +162,31 @@ int main(int argc, char *argv[])
                 printf("%.2f\t", C[i + j * N1]);
             }
             printf("\n");
+        }
+    }
+
+    //Mostramos Result
+    printf("\nResultado:\n");
+    if (N1 < 7 && M1 < 7)
+    {
+        for (int i = 0; i < N1; i++)
+        {
+            for (int j = 0; j < M2; j++)
+            {
+                printf("%.2f\t", Result[i + j * N1]);
+            }
+            printf("\n");
+        }
+    }
+
+    //Comparamos los resultados
+    for (int i = 0; i < N1 * M2; i++)
+    {
+        if (abs(C[i] - Result[i]) > ErrorPrecision)
+        {
+            printf("\nError en la posición %d\n", i);
+            printf("%.2f\t%.2f\n", C[i], Result[i]);
+            break;
         }
     }
 }
