@@ -21,14 +21,19 @@ void SumarMatricesCPU(float *A, float *B, float *C, unsigned int N1, unsigned in
 
 void MultiplicarMatricesCPU(float *A, float *B, float *C, unsigned int N1, unsigned int M1, unsigned int N2, unsigned int M2)
 {
-	for (unsigned int i = 0; i < M1; i++)
+	//Empty C
+	for(unsigned int i = 0; i < N1*M2; i++)
 	{
-		for (unsigned int j = 0; j < N2; j++)
+		C[i] = 0;
+	}
+
+	for (unsigned int i = 0; i < N1; i++)
+	{
+		for (unsigned int j = 0; j < M2; j++)
 		{
-			C[i * N2 + j] = 0;
-			for (unsigned int k = 0; k < N1; k++)
+			for (unsigned int k = 0; k < M1; k++)
 			{
-				C[i * N2 + j] += A[i * N1 + k] * B[k * N2 + j];
+				C[i*M2 + j] += A[i*M1 + k] * B[k*M2 + j];
 			}
 		}
 	}
@@ -55,14 +60,13 @@ __global__ void MultiplicarMatricesGPU(float *A, float *B, float *C, unsigned in
 	unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
 	unsigned int j = blockIdx.y * blockDim.y + threadIdx.y;
 
-	while (i < M1)
+	while (i < N1)
 	{
-		while (j < N2)
+		while (j < M2)
 		{
-			C[i * N2 + j] = 0;
-			for (unsigned int k = 0; k < N1; k++)
+			for (unsigned int k = 0; k < M1; k++)
 			{
-				C[i * N2 + j] += A[i * N1 + k] * B[k * N2 + j];
+				C[i*M2 + j] += A[i*M1 + k] * B[k*M2 + j];
 			}
 			j += gridDim.y;
 		}
@@ -161,20 +165,20 @@ int main(int argc, char *argv[])
 	if (N1 < 7 && M1 < 7)
 	{
 		printf("Matriz 1:\n");
-		for (int i = 0; i < M1; i++)
+		for (int i = 0; i < N1; i++)
 		{
-			for (int j = 0; j < N1; j++)
+			for (int j = 0; j < M1; j++)
 			{
-				printf("%.2f\t", A[i * N1 + j]);
+				printf("%.2f ", A[i * N1 + j]);
 			}
 			printf("\n");
 		}
 		printf("\nMatriz 2:\n");
-		for (int i = 0; i < M2; i++)
+		for (int i = 0; i < N2; i++)
 		{
-			for (int j = 0; j < N2; j++)
+			for (int j = 0; j < M2; j++)
 			{
-				printf("%.2f\t", B[i * N2 + j]);
+				printf("%.2f ", B[i * M2 + j]);
 			}
 			printf("\n");
 		}
@@ -232,7 +236,7 @@ int main(int argc, char *argv[])
 	// Mostramos Result
 	if (N1 < 7 && M1 < 7)
 	{
-		printf("\nResultado:\n");
+		printf("\nMatriz resultante GPU:\n");
 		for (int i = 0; i < M2; i++)
 		{
 			for (int j = 0; j < N1; j++)

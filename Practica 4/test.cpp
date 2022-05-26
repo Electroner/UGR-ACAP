@@ -7,21 +7,26 @@
 
 using namespace std;
 
-// N1: number of columns in the matrix A
-// M1: number of rows in the matrix A
-// N2: number of columns in the matrix B
-// M2: number of rows in the matrix B
+// N1: number of rows in the matrix A
+// M1: number of columns in the matrix A
+// N2: number of rows in the matrix B
+// M2: number of columns in the matrix B
 
 void MultiplicarMatrices(float *A, float *B, float *C, unsigned int N1, unsigned int M1, unsigned int N2, unsigned int M2)
 {	
-	for (unsigned int i = 0; i < M1; i++)
+	//Empty C
+	for(unsigned int i = 0; i < N1*M2; i++)
 	{
-		for (unsigned int j = 0; j < N2; j++)
+		C[i] = 0;
+	}
+
+	for (unsigned int i = 0; i < N1; i++)
+	{
+		for (unsigned int j = 0; j < M2; j++)
 		{
-			C[i*N2 + j] = 0;
-			for (unsigned int k = 0; k < N1; k++)
+			for (unsigned int k = 0; k < M1; k++)
 			{
-				C[i * N2 + j] += A[i * N1 + k] * B[k * N2 + j];
+				C[i*M2 + j] += A[i*M1 + k] * B[k*M2 + j];
 			}
 		}
 	}
@@ -83,20 +88,20 @@ int main(int argc, char *argv[])
 	if (N1 < 7 && M1 < 7)
 	{
 		printf("Matriz 1:\n");
-		for (int i = 0; i < M1; i++)
+		for (int i = 0; i < N1; i++)
 		{
-			for (int j = 0; j < N1; j++)
+			for (int j = 0; j < M1; j++)
 			{
 				printf("%.2f ", A[i * N1 + j]);
 			}
 			printf("\n");
 		}
 		printf("\nMatriz 2:\n");
-		for (int i = 0; i < M2; i++)
+		for (int i = 0; i < N2; i++)
 		{
-			for (int j = 0; j < N2; j++)
+			for (int j = 0; j < M2; j++)
 			{
-				printf("%.2f ", B[i * N2 + j]);
+				printf("%.2f ", B[i * M2 + j]);
 			}
 			printf("\n");
 		}
