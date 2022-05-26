@@ -4,10 +4,10 @@
 #include <ctime>
 #include <chrono>
 #include <random>
+#include <cublas_v2.h>
 
-#define ErrorPrecision 0.00001
-#define Blocks 1
-#define Threads 100
+#define ErrorPrecision 1
+#define MAXThreadsPerBlock 512
 
 void SumarMatricesCPU(float *A, float *B, float *C, unsigned int N1, unsigned int M1, unsigned int N2, unsigned int M2)
 {
@@ -22,16 +22,17 @@ void SumarMatricesCPU(float *A, float *B, float *C, unsigned int N1, unsigned in
 
 void MultiplicarMatricesCPU(float *A, float *B, float *C, unsigned int N1, unsigned int M1, unsigned int N2, unsigned int M2)
 {
-    for (unsigned int i = 0; i < N1; i++)
-    {
-        for (unsigned int j = 0; j < M2; j++)
-        {
-            for (unsigned int k = 0; k < M1; k++)
-            {
-                C[i * M2 + j] += A[i * M1 + k] * B[k * M2 + j];
-            }
-        }
-    }
+    for (unsigned int i = 0; i < M1; i++)
+	{
+		for (unsigned int j = 0; j < N2; j++)
+		{
+			C[i*N2 + j] = 0;
+			for (unsigned int k = 0; k < N1; k++)
+			{
+				C[i * N2 + j] += A[i * N1 + k] * B[k * N2 + j];
+			}
+		}
+	}
 }
 
 __global__ void SumarMatricesGPU(float *A, float *B, float *C, unsigned int N1, unsigned int M1, unsigned int N2, unsigned int M2)
@@ -54,16 +55,15 @@ __global__ void MultiplicarMatricesGPU(float *A, float *B, float *C, unsigned in
 {
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int j = blockIdx.y * blockDim.y + threadIdx.y;
-    unsigned int k = blockIdx.z * blockDim.z + threadIdx.z;
 
-    while(i < N1)
+    while(i < M1)
     {
-        while(j < M2)
+        while(j < N2)
         {
-            while(k < M1)
+            C[i*N2 + j] = 0;
+            for (unsigned int k = 0; k < N1; k++)
             {
-                C[i * M2 + j] += A[i * M1 + k] * B[k * M2 + j];
-                k += gridDim.z;
+                C[i * N2 + j] += A[i * N1 + k] * B[k * N2 + j];
             }
             j += gridDim.y;
         }
@@ -93,6 +93,34 @@ int main(int argc, char *argv[])
     int M1 = atoi(argv[2]);
     int N2 = atoi(argv[3]);
     int M2 = atoi(argv[4]);
+
+    //Con los valores de N y M elegir que valores de Threads y Blocks se usaran
+    //Un Thread por elemento final de la matriz
+    //Si el numero de elementos es mayor que el numero de threads por bloque, se usaran mas bloques
+    //Si el numero de elementos es menor que el numero de threads por bloque, se usaran menos bloques
+    //Si el numero de elementos es multiplo del numero de threads por bloque, se usaran el numero de bloques exacto
+    int Threads;
+    int Blocks;
+    if(N1 * M1 < MAXThreadsPerBlock)
+    {
+        Threads = N1 * M1;
+        Blocks = 1;
+    }
+    else
+    {
+        Threads = MAXThreadsPerBlock;
+        Blocks = (N1 * M1) / MAXThreadsPerBlock;
+        if ((N1 * M1) % MAXThreadsPerBlock != 0)
+        {
+            Blocks++;
+        }
+    }
+    
+    //Mostrar los Threads y Blocks que se usaran
+    printf("----- Eleccion de Threads y Blocks -----\n");
+    printf("Threads: %d\n", Threads);
+    printf("Blocks: %d\n", Blocks);
+    printf("----------------------------------------\n\n");
 
     //Comprobar que las dimensiones de las matrices son validas
     if (N1 <= 0 || M1 <= 0 || N2 <= 0 || M2 <= 0)
@@ -134,28 +162,28 @@ int main(int argc, char *argv[])
     if (N1 < 7 && M1 < 7)
     {
         printf("Matriz 1:\n");
-        for (int i = 0; i < N1; i++)
-        {
-            for (int j = 0; j < M1; j++)
-            {
-                printf("%.2f\t", A[i + j * N1]);
-            }
-            printf("\n");
-        }
-        printf("\nMatriz 2:\n");
-        for (int i = 0; i < N2; i++)
-        {
-            for (int j = 0; j < M2; j++)
-            {
-                printf("%.2f\t", B[i + j * N2]);
-            }
-            printf("\n");
-        }
+		for (int i = 0; i < M1; i++)
+		{
+			for (int j = 0; j < N1; j++)
+			{
+				printf("%.2f\t", A[i * N1 + j]);
+			}
+			printf("\n");
+		}
+		printf("\nMatriz 2:\n");
+		for (int i = 0; i < M2; i++)
+		{
+			for (int j = 0; j < N2; j++)
+			{
+				printf("%.2f\t", B[i * N2 + j]);
+			}
+			printf("\n");
+		}
     }
 
     //#################################################### CPU ####################################################//
-    SumarMatricesCPU(A, B, C, N1, M1, N2, M2);
-    //MultiplicarMatricesCPU(A, B, C, N1, M1, N2, M2);
+    //SumarMatricesCPU(A, B, C, N1, M1, N2, M2);
+    MultiplicarMatricesCPU(A, B, C, N1, M1, N2, M2);
 
     //Calculamos el tiempo de ejecución con cuda creado un evento
     cudaEvent_t Begining, Ending;
@@ -174,8 +202,8 @@ int main(int argc, char *argv[])
     //Calculamos el tiempo de ejecución
     cudaEventRecord(Begining);
     //#################################################### GPU ####################################################//
-    SumarMatricesGPU<<<Blocks, Threads>>>(A_d, B_d, C_d, N1, M1, N2, M2);
-    //MultiplicarMatricesGPU<<<Blocks, Threads>>>(A_d, B_d, C_d, N1, M1, N2, M2);
+    //SumarMatricesGPU<<<Blocks, Threads>>>(A_d, B_d, C_d, N1, M1, N2, M2);
+    MultiplicarMatricesGPU<<<Blocks, Threads>>>(A_d, B_d, C_d, N1, M1, N2, M2);
     cudaEventRecord(Ending);
     cudaDeviceSynchronize();
 
@@ -190,27 +218,27 @@ int main(int argc, char *argv[])
 
     //Si el tamaño es menor que 7, imprimimos la matriz C
     if (N1 < 7 && M1 < 7)
-    {
-        printf("\nMatriz resultante CPU:\n");
-        for (int i = 0; i < N1; i++)
-        {
-            for (int j = 0; j < M2; j++)
-            {
-                printf("%.2f\t", C[i + j * N1]);
-            }
-            printf("\n");
-        }
-    }
+	{
+		printf("\nMatriz resultante CPU:\n");
+		for (int i = 0; i < M2; i++)
+		{
+			for (int j = 0; j < N1; j++)
+			{
+				printf("%.2f\t", C[i * N1 + j]);
+			}
+			printf("\n");
+		}
+	}
 
     //Mostramos Result
     if (N1 < 7 && M1 < 7)
     {
         printf("\nResultado:\n");
-        for (int i = 0; i < N1; i++)
+        for (int i = 0; i < M2; i++)
         {
-            for (int j = 0; j < M2; j++)
+            for (int j = 0; j < N1; j++)
             {
-                printf("%.2f\t", Result[i + j * N1]);
+                printf("%.2f\t", Result[i * N1 + j]);
             }
             printf("\n");
         }
@@ -225,8 +253,11 @@ int main(int argc, char *argv[])
     {
         if (abs(C[i] - Result[i]) > ErrorPrecision)
         {
-            printf("\nError en la posición %d\n", i);
-            printf("%.2f\t%.2f\n", C[i], Result[i]);
+            //With i get the row and column of the C matrix
+            int row = i / N1;
+            int col = i % N1;
+            printf("\nError en la posicion C[%d][%d]\n", row, col);
+            printf("%.2f != %.2f\n", C[i], Result[i]);
             exito = false;
         }
     }
