@@ -4,7 +4,6 @@
 #include <ctime>
 #include <chrono>
 #include <random>
-#include <cublas_v2.h>
 
 #define ErrorPrecision 1
 #define MAXThreadsPerBlock 512
