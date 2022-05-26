@@ -113,11 +113,7 @@ int main(int argc, char *argv[])
 	else
 	{
 		Threads = MAXThreadsPerBlock;
-		Blocks = (N1 * M1) / MAXThreadsPerBlock;
-		if ((N1 * M1) % MAXThreadsPerBlock != 0)
-		{
-			Blocks++;
-		}
+		Blocks = (N1 * M2) / MAXThreadsPerBlock + 1;
 	}
 
 	// Mostrar los Threads y Blocks que se usaran
@@ -153,12 +149,12 @@ int main(int argc, char *argv[])
 
 	for (int i = 0; i < N1 * M1; i++)
 	{
-		A[i] = TrueRand(0, 1000);
+		A[i] = TrueRand(0, 100);
 	}
 
 	for (int i = 0; i < N2 * M2; i++)
 	{
-		B[i] = TrueRand(0, 1000);
+		B[i] = TrueRand(0, 100);
 	}
 
 	// Si el tamaño es menor que 7, imprimimos la matriz
@@ -184,9 +180,14 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	float timeCPU = 0;
+	//Medir Tiempo CPU
+	clock_t start = clock();
 	//#################################################### CPU ####################################################//
 	// SumarMatricesCPU(A, B, C, N1, M1, N2, M2);
 	MultiplicarMatricesCPU(A, B, C, N1, M1, N2, M2);
+	clock_t end = clock();
+	timeCPU = (float)(end - start) / CLOCKS_PER_SEC;
 
 	// Calculamos el tiempo de ejecución con cuda creado un evento
 	cudaEvent_t Begining, Ending;
@@ -216,8 +217,8 @@ int main(int argc, char *argv[])
 
 	// Calculamos el tiempo de ejecución
 	cudaEventSynchronize(Ending);
-	float time;
-	cudaEventElapsedTime(&time, Begining, Ending);
+	float timeGPU;
+	cudaEventElapsedTime(&timeGPU, Begining, Ending);
 
 	// Si el tamaño es menor que 7, imprimimos la matriz C
 	if (N1 < 7 && M1 < 7)
@@ -248,7 +249,10 @@ int main(int argc, char *argv[])
 	}
 
 	// Imprimimos los resultados
-	printf("\nTIEMPO DE EJECUCION: %f\n", time);
+	printf("\nTiempo de ejecucion CPU: %f\n", timeCPU*1000);
+
+	// Imprimimos los resultados
+	printf("\nTIEMPO DE EJECUCION GPU: %f\n", timeGPU);
 
 	bool exito = true;
 	// Comparamos los resultados
@@ -268,4 +272,14 @@ int main(int argc, char *argv[])
 	{
 		printf("\nTodos los resultados coinciden\n");
 	}
+/*
+	// Liberamos memoria
+	free(A);
+	free(B);
+	free(C);
+	free(A_d);
+	free(B_d);
+	free(C_d);
+	free(Result);
+*/
 }
