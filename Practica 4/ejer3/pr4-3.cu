@@ -225,7 +225,6 @@ int main(int argc, char *argv[])
 	cudaEventSynchronize(Ending);
 	float timeGPU;
 	cudaEventElapsedTime(&timeGPU, Begining, Ending);
-
 	cudaDeviceSynchronize();
 
 	// Si el tamaño es menor que 7, imprimimos la matriz C
@@ -257,7 +256,7 @@ int main(int argc, char *argv[])
 	}
 
 	// Imprimimos los resultados
-	printf("\nTiempo de ejecucion CPU: %f\n", timeCPU*1000);
+	printf("\nTIEMPO DE EJECUCION CPU: %f\n", timeCPU*1000);
 
 	// Imprimimos los resultados
 	printf("\nTIEMPO DE EJECUCION GPU: %f\n", timeGPU);
