@@ -5,8 +5,9 @@
 #include <chrono>
 #include <random>
 
-#define ErrorPrecision 1
-#define MAXThreadsPerBlock 512
+#define ErrorPrecision 1 		//Decimales de error
+#define MaxBlocks 64			//Maximo numero de bloques
+#define MaxThreadsPerBlock 1024	//Maximo numero de threads por bloque
 
 void SumarMatricesCPU(float *A, float *B, float *C, unsigned int N1, unsigned int M1, unsigned int N2, unsigned int M2)
 {
@@ -98,23 +99,28 @@ int main(int argc, char *argv[])
 	int N2 = atoi(argv[3]);
 	int M2 = atoi(argv[4]);
 
-	// Con los valores de N y M elegir que valores de Threads y Blocks se usaran
-	// Un Thread por elemento final de la matriz
-	// Si el numero de elementos es mayor que el numero de threads por bloque, se usaran mas bloques
-	// Si el numero de elementos es menor que el numero de threads por bloque, se usaran menos bloques
-	// Si el numero de elementos es multiplo del numero de threads por bloque, se usaran el numero de bloques exacto
-	int Threads;
+	//Elegir la cantidad de bloques y threads por bloque dependiendo del tamaño de la matriz
 	int Blocks;
-	if (N1 * M1 < MAXThreadsPerBlock)
+	int Threads;
+	if (N1 * M1 < MaxThreadsPerBlock)
 	{
-		Threads = N1 * M1;
 		Blocks = 1;
+		Threads = N1 * M1;
 	}
 	else
 	{
-		Threads = MAXThreadsPerBlock;
-		Blocks = (N1 * M2) / MAXThreadsPerBlock + 1;
+		if(Blocks = N1 * M1 / MaxThreadsPerBlock % MaxBlocks == 0)
+		{
+			Blocks = N1 * M1 / MaxThreadsPerBlock;
+			Threads = MaxThreadsPerBlock;
+		}
+		else
+		{
+			Blocks = N1 * M1 / MaxThreadsPerBlock + 1;
+			Threads = N1 * M1 % MaxThreadsPerBlock;
+		}
 	}
+
 
 	// Mostrar los Threads y Blocks que se usaran
 	printf("----- Eleccion de Threads y Blocks -----\n");
@@ -141,9 +147,9 @@ int main(int argc, char *argv[])
 	float *B = (float *)malloc(N2 * M2 * sizeof(float));
 	float *C = (float *)malloc(N1 * M2 * sizeof(float));
 
-	float *A_d = (float *)malloc(N1 * M1 * sizeof(float));
-	float *B_d = (float *)malloc(N2 * M2 * sizeof(float));
-	float *C_d = (float *)malloc(N1 * M2 * sizeof(float));
+	float *A_d;
+	float *B_d;
+	float *C_d;
 
 	float *Result = (float *)malloc(N1 * M2 * sizeof(float));
 
@@ -165,7 +171,7 @@ int main(int argc, char *argv[])
 		{
 			for (int j = 0; j < M1; j++)
 			{
-				printf("%.2f ", A[i * N1 + j]);
+				printf("%.3f\t", A[i * N1 + j]);
 			}
 			printf("\n");
 		}
@@ -174,7 +180,7 @@ int main(int argc, char *argv[])
 		{
 			for (int j = 0; j < M2; j++)
 			{
-				printf("%.2f ", B[i * M2 + j]);
+				printf("%.3f\t", B[i * M2 + j]);
 			}
 			printf("\n");
 		}
@@ -220,6 +226,8 @@ int main(int argc, char *argv[])
 	float timeGPU;
 	cudaEventElapsedTime(&timeGPU, Begining, Ending);
 
+	cudaDeviceSynchronize();
+
 	// Si el tamaño es menor que 7, imprimimos la matriz C
 	if (N1 < 7 && M1 < 7)
 	{
@@ -228,7 +236,7 @@ int main(int argc, char *argv[])
 		{
 			for (int j = 0; j < N1; j++)
 			{
-				printf("%.2f\t", C[i * N1 + j]);
+				printf("%.3f\t", C[i * N1 + j]);
 			}
 			printf("\n");
 		}
@@ -242,7 +250,7 @@ int main(int argc, char *argv[])
 		{
 			for (int j = 0; j < N1; j++)
 			{
-				printf("%.2f\t", Result[i * N1 + j]);
+				printf("%.3f\t", Result[i * N1 + j]);
 			}
 			printf("\n");
 		}
@@ -264,7 +272,7 @@ int main(int argc, char *argv[])
 			int row = i / N1;
 			int col = i % N1;
 			printf("\nError en la posicion C[%d][%d]\n", row, col);
-			printf("%.2f != %.2f\n", C[i], Result[i]);
+			printf("%.3f != %.3f\n", C[i], Result[i]);
 			exito = false;
 		}
 	}
@@ -272,14 +280,15 @@ int main(int argc, char *argv[])
 	{
 		printf("\nTodos los resultados coinciden\n");
 	}
-/*
+
 	// Liberamos memoria
 	free(A);
 	free(B);
 	free(C);
-	free(A_d);
-	free(B_d);
-	free(C_d);
 	free(Result);
-*/
+
+	// Liberamos memoria Cuda
+	cudaFree(A_d);
+	cudaFree(B_d);
+	cudaFree(C_d);
 }

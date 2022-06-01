@@ -1,0 +1,11 @@
+----- Eleccion de Threads y Blocks -----
+Threads: 576
+Blocks: 977
+----------------------------------------
+
+
+Tiempo de ejecucion CPU: 4133.494141
+
+TIEMPO DE EJECUCION GPU: 984.500244
+
+Todos los resultados coinciden
