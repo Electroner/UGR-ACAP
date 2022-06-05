@@ -8,15 +8,44 @@
 #define MaxBlocks 64			// Maximo numero de bloques
 #define MaxThreadsPerBlock 1024 // Maximo numero de threads por bloque
 
-//Get the minimun value of the array and assign it to result
-__global__ void getMinGPU(float *_arr,float *_result,unsigned int _size){
-	*_result = _arr[0];
+// Get the minimun value of the array and assign it to result
+__global__ void getMinGPU(float *g_idata, float *_result, int size)
+{
+	extern __shared__ float sdata[];
+
+	unsigned int tid = threadIdx.x;
+	unsigned int i = blockIdx.x * (blockDim.x * 2) + threadIdx.x;
+
+	while(i < size)
+	{
+		sdata[tid] = g_idata[i];
+		i += blockDim.x * 2;
+	}
+
+	__syncthreads();
+
+	// do reduction in shared mem
+	for(unsigned int s=blockDim.x/2; s>32; s>>=1)
+	{
+		if(tid < s)
+			sdata[tid] = fminf(sdata[tid], sdata[tid + s]);
+		__syncthreads();
+	}
+
+	//Copy result from shared mem to global mem
+	if (tid == 0 && blockIdx.x == 0)
+	{
+		*_result = sdata[0];
+	}
 }
 
-float getMinCPU (float *array, int size) {
+float getMinCPU(float *array, int size)
+{
 	float min = array[0];
-	for (int i = 1; i < size; i++) {
-		if (array[i] < min) {
+	for (int i = 1; i < size; i++)
+	{
+		if (array[i] < min)
+		{
 			min = array[i];
 		}
 	}
@@ -101,11 +130,11 @@ int main(int argc, char *argv[])
 	// Calculamos el tiempo de ejecución
 	cudaEventRecord(Begining);
 	//#################################################### GPU ####################################################//
-	getMinGPU<<<Blocks, Threads>>>(Arr_d,result_d, size);
+	getMinGPU<<<Blocks, Threads>>>(Arr_d, result_d,size);
 	cudaEventRecord(Ending);
 	cudaDeviceSynchronize();
 
-	//Copiamos los datos de la GPU a la CPU
+	// Copiamos los datos de la GPU a la CPU
 	cudaMemcpy(result, result_d, sizeof(float), cudaMemcpyDeviceToHost);
 	cudaDeviceSynchronize();
 
