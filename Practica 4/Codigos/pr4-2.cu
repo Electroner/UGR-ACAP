@@ -5,20 +5,20 @@
 #include <chrono>
 #include <random>
 
-#define MaxBlocks 64			// Maximo numero de bloques
+#define MaxBlocks 256			// Maximo numero de bloques
 #define MaxThreadsPerBlock 1024 // Maximo numero de threads por bloque
 
 __global__ void getMaxGPU(int *vector, int *mayor, int _size) 
 {
-    int hebra = blockIdx.x*blockDim.x + threadIdx.x; 
+    int tid = blockIdx.x*blockDim.x + threadIdx.x; 
     int offset = blockDim.x*gridDim.x; 
  
     int maximo = vector[0];
-    while(hebra < _size){ 
-        if(vector[hebra] > maximo){ 
-            maximo = vector[hebra]; 
+    while(tid < _size){ 
+        if(vector[tid] > maximo){ 
+            maximo = vector[tid]; 
         }
-        hebra += offset; 
+        tid += offset; 
     } 
 
     __syncthreads(); 
@@ -61,8 +61,18 @@ int main(int argc, char *argv[])
 	int size = atoi(argv[1]);
 
 	// Elegir la cantidad de bloques y threads por bloque dependiendo del tamaño del vector
-	int Blocks = 1;
-	int Threads = 1;
+	int Blocks;
+	int Threads;
+	if (size <= MaxBlocks)
+	{
+		Blocks = size;
+		Threads = MaxThreadsPerBlock;
+	}
+	else
+	{
+		Blocks = MaxBlocks;
+		Threads = MaxThreadsPerBlock;
+	}
 
 	// Mostrar los Threads y Blocks que se usaran
 	printf("----- Eleccion de Threads y Blocks -----\n");
@@ -80,7 +90,7 @@ int main(int argc, char *argv[])
 
 	for (int i = 0; i < size; i++)
 	{
-		Arr[i] = (int)TrueRand(0, 100);
+		Arr[i] = (int)TrueRand(0, 1000);
 	}
 
 	// Si el tamaño es menor que 10, imprimimos el vector
@@ -140,10 +150,10 @@ int main(int argc, char *argv[])
 	printf("%d\n", *result);
 
 	// Imprimimos los resultados
-	printf("\nTIEMPO DE EJECUCION CPU: %f\n", timeCPU * 1000);
+	printf("\nTIEMPO DE EJECUCION CPU: %.3f\n", timeCPU * 1000);
 
 	// Imprimimos los resultados
-	printf("\nTIEMPO DE EJECUCION GPU: %f\n", timeGPU);
+	printf("\nTIEMPO DE EJECUCION GPU: %.3f\n", timeGPU);
 
 	// Liberamos memoria
 	free(Arr);
