@@ -1,0 +1,17 @@
+----- Eleccion de Threads y Blocks -----
+Threads: 1
+Blocks: 1
+----------------------------------------
+
+Vector:
+94 39 2 49 67 98 90 69 73 78 
+
+Valor Resultante CPU:
+98
+
+Valor Resultante GPU:
+98
+
+TIEMPO DE EJECUCION CPU: 0.001000
+
+TIEMPO DE EJECUCION GPU: 0.011616

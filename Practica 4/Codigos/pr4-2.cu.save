@@ -8,30 +8,43 @@
 #define MaxBlocks 64			// Maximo numero de bloques
 #define MaxThreadsPerBlock 1024 // Maximo numero de threads por bloque
 
-__global__ void getMaxGPU(int *vector, int *mayor, int _size) 
+// Get the minimun value of the array and assign it to result
+__global__ void getMinGPU(float *g_idata, float *_result, int size)
 {
-    int hebra = blockIdx.x*blockDim.x + threadIdx.x; 
-    int offset = blockDim.x*gridDim.x; 
- 
-    int maximo = vector[0];
-    while(hebra < _size){ 
-        if(vector[hebra] > maximo){ 
-            maximo = vector[hebra]; 
-        }
-        hebra += offset; 
-    } 
+	extern __shared__ float sdata[];
 
-    __syncthreads(); 
+	unsigned int tid = threadIdx.x;
+	unsigned int i = blockIdx.x * blockDim.x_ + threadIdx.x;
 
-    atomicMax(mayor, maximo); 
+	while(i < size)
+	{
+		sdata[tid] = g_idata[i];
+		i += blockDim.x * 2;
+	}
+
+	__syncthreads();
+
+	// do reduction in shared mem
+	for(unsigned int s=blockDim.x/2; s>32; s>>=1)
+	{
+		if(tid < s)
+			sdata[tid] = fminf(sdata[tid], sdata[tid + s]);
+		__syncthreads();
+	}
+
+	//Copy result from shared mem to global mem
+	if (tid == 0 && blockIdx.x == 0)
+	{
+		*_result = sdata[0];
+	}
 }
 
-int getMaxCPU(int *array, int size)
+float getMinCPU(float *array, int size)
 {
-	int min = array[0];
+	float min = array[0];
 	for (int i = 1; i < size; i++)
 	{
-		if (array[i] > min)
+		if (array[i] < min)
 		{
 			min = array[i];
 		}
@@ -71,16 +84,16 @@ int main(int argc, char *argv[])
 	printf("----------------------------------------\n\n");
 
 	// Generamos las matrices
-	int *Arr = (int *)malloc(size * sizeof(int));
-	int *Arr_d;
-	int sol_cpu;
+	float *Arr = (float *)malloc(size * sizeof(float));
+	float *Arr_d;
+	float sol_cpu;
 
-	int *result = (int *)malloc(sizeof(int));
-	int *result_d;
+	float *result = (float *)malloc(sizeof(float));
+	float *result_d;
 
 	for (int i = 0; i < size; i++)
 	{
-		Arr[i] = (int)TrueRand(0, 100);
+		Arr[i] = TrueRand(0, 100);
 	}
 
 	// Si el tamaño es menor que 10, imprimimos el vector
@@ -89,7 +102,7 @@ int main(int argc, char *argv[])
 		printf("Vector:\n");
 		for (int i = 0; i < size; i++)
 		{
-			printf("%d ", Arr[i]);
+			printf("%.3f ", Arr[i]);
 		}
 		printf("\n");
 	}
@@ -98,7 +111,7 @@ int main(int argc, char *argv[])
 	// Medir Tiempo CPU
 	clock_t start = clock();
 	//#################################################### CPU ####################################################//
-	sol_cpu = getMaxCPU(Arr, size);
+	sol_cpu = getMinCPU(Arr, size);
 	clock_t end = clock();
 	timeCPU = (float)(end - start) / CLOCKS_PER_SEC;
 
@@ -117,7 +130,7 @@ int main(int argc, char *argv[])
 	// Calculamos el tiempo de ejecución
 	cudaEventRecord(Begining);
 	//#################################################### GPU ####################################################//
-	getMaxGPU<<<Blocks, Threads>>>(Arr_d, result_d, size);
+	getMinGPU<<<Blocks, Threads>>>(Arr_d, result_d,size);
 	cudaEventRecord(Ending);
 	cudaDeviceSynchronize();
 
@@ -133,11 +146,11 @@ int main(int argc, char *argv[])
 
 	// Mostramos el resultado de CPU
 	printf("\nValor Resultante CPU:\n");
-	printf("%d\n", sol_cpu);
+	printf("%f\n", sol_cpu);
 
 	// Mostramos el resultado de GPU
 	printf("\nValor Resultante GPU:\n");
-	printf("%d\n", *result);
+	printf("%f\n", *result);
 
 	// Imprimimos los resultados
 	printf("\nTIEMPO DE EJECUCION CPU: %f\n", timeCPU * 1000);
