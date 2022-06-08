@@ -2,9 +2,9 @@
 USER='estudiante15'
 PASS='tnapzscrgg'
 FILE='output.txt'
-SOURCE='pr4-2.cu'
-PROGRAM='ejer2'
-PARAMS='1000000'
+SOURCE='pr4-1.cu'
+PROGRAM='ejer1'
+PARAMS=''
 
 if [ -f $FILE ]; then
     rm $FILE

@@ -1,15 +1,1 @@
------ Eleccion de Threads y Blocks -----
-Threads: 1024
-Blocks: 256
-----------------------------------------
-
-
-Valor Resultante CPU:
-999
-
-Valor Resultante GPU:
-999
-
-TIEMPO DE EJECUCION CPU: 1.774
-
-TIEMPO DE EJECUCION GPU: 0.018
+Max error: 0.000000nEffective Bandwidth (GB/s): 556.805440nGFLOPS/s: 92.800903
