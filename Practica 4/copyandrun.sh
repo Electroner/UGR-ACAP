@@ -1,6 +1,6 @@
 #!/bin/bash
-USER='estudiante15'
-PASS='tnapzscrgg'
+USER=''
+PASS=''
 FILE='output.txt'
 SOURCE='pr4-1.cu'
 PROGRAM='ejer1'
