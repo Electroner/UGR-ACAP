@@ -1,4 +1,4 @@
 #!/bin/bash
-USER='estudiante15'
-PASS='tnapzscrgg'
+USER=''
+PASS=''
 sshpass -p $PASS ssh -o StrictHostKeyChecking=no $USER@genmagic.ugr.es
